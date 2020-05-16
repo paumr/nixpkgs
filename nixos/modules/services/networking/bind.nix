@@ -33,29 +33,31 @@ let
       ${cfg.extraConfig}
 
       ${ concatMapStrings
-          ({ name, file, master ? true, slaves ? [], masters ? [], extraConfig ? "" }:
+      (
+        { name, file, master ? true, slaves ? [], masters ? [], extraConfig ? "" }:
+          ''
+            zone "${name}" {
+              type ${if master then "master" else "slave"};
+              file "${file}";
+              ${ if master then
             ''
-              zone "${name}" {
-                type ${if master then "master" else "slave"};
-                file "${file}";
-                ${ if master then
-                   ''
-                     allow-transfer {
-                       ${concatMapStrings (ip: "${ip};\n") slaves}
-                     };
-                   ''
-                   else
-                   ''
-                     masters {
-                       ${concatMapStrings (ip: "${ip};\n") masters}
-                     };
-                   ''
-                }
-                allow-query { any; };
-                ${extraConfig}
+              allow-transfer {
+                ${concatMapStrings (ip: "${ip};\n") slaves}
               };
-            '')
-          cfg.zones }
+            ''
+          else
+            ''
+              masters {
+                ${concatMapStrings (ip: "${ip};\n") masters}
+              };
+            ''
+          }
+              allow-query { any; };
+              ${extraConfig}
+            };
+          ''
+      )
+      cfg.zones }
     '';
 
 in
@@ -71,7 +73,7 @@ in
       enable = mkEnableOption "BIND domain name server";
 
       cacheNetworks = mkOption {
-        default = ["127.0.0.0/24"];
+        default = [ "127.0.0.0/24" ];
         description = "
           What networks are allowed to use us as a resolver.  Note
           that this is for recursive queries -- all networks are
@@ -103,7 +105,7 @@ in
       };
 
       listenOn = mkOption {
-        default = ["any"];
+        default = [ "any" ];
         type = types.listOf types.str;
         description = "
           Interfaces to listen on.
@@ -111,7 +113,7 @@ in
       };
 
       listenOnIpv6 = mkOption {
-        default = ["any"];
+        default = [ "any" ];
         type = types.listOf types.str;
         description = "
           Ipv6 interfaces to listen on.
@@ -125,14 +127,16 @@ in
             master=false means slave server; slaves means addresses
            who may request zone transfer.
         ";
-        example = [{
-          name = "example.com";
-          master = false;
-          file = "/var/dns/example.com";
-          masters = ["192.168.0.1"];
-          slaves = [];
-          extraConfig = "";
-        }];
+        example = [
+          {
+            name = "example.com";
+            master = false;
+            file = "/var/dns/example.com";
+            masters = [ "192.168.0.1" ];
+            slaves = [];
+            extraConfig = "";
+          }
+        ];
       };
 
       extraConfig = mkOption {
@@ -174,7 +178,8 @@ in
     networking.resolvconf.useLocalResolver = mkDefault true;
 
     users.users.${bindUser} =
-      { uid = config.ids.uids.bind;
+      {
+        uid = config.ids.uids.bind;
         description = "BIND daemon user";
       };
 
@@ -194,9 +199,9 @@ in
       '';
 
       serviceConfig = {
-        ExecStart  = "${pkgs.bind.out}/sbin/named -u ${bindUser} ${optionalString cfg.ipv4Only "-4"} -c ${cfg.configFile} -f";
+        ExecStart = "${pkgs.bind.out}/sbin/named -u ${bindUser} ${optionalString cfg.ipv4Only "-4"} -c ${cfg.configFile} -f";
         ExecReload = "${pkgs.bind.out}/sbin/rndc -k '/etc/bind/rndc.key' reload";
-        ExecStop   = "${pkgs.bind.out}/sbin/rndc -k '/etc/bind/rndc.key' stop";
+        ExecStop = "${pkgs.bind.out}/sbin/rndc -k '/etc/bind/rndc.key' stop";
       };
 
       unitConfig.Documentation = "man:named(8)";
