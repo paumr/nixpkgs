@@ -8,6 +8,23 @@ let
 
   bindUser = "named";
 
+  zoneFile = { name, opts }: pkgs.writeText "zone-${name}.conf"
+    ''
+      $TTL ${opts.default_ttl}
+      @  IN  SOA  ${opts.name_primary}.${name}. ${opts.owner} (
+          ${builtins.toString opts.serial}  ; serial
+          ${opts.refresh}  ; refresh
+          ${opts.retry}  ; retry
+          ${opts.expire}  ; expire
+          ${opts.minimum_ttl})  ; minimum ttl
+          NS  ${opts.name_primary}.${name}.
+      ${concatMapStrings (
+      x: ''
+        ${x.name} ${if x.ttl == null then opts.default_ttl else x.ttl} IN ${x.type} ${x.value}
+      ''
+    ) opts.records}
+    '';
+
   confFile = pkgs.writeText "named.conf"
     ''
       include "/etc/bind/rndc.key";
@@ -34,11 +51,14 @@ let
 
       ${ concatMapStrings
       (
-        { name, file, master ? true, slaves ? [], masters ? [], extraConfig ? "" }:
+        { name, file, master, slaves, masters, extraConfig }:
+        # TODO: there has to be a better way:
+        # generate zone-file if file is an attrset, else use file
+        # checks if the attrs isn't a derivation in case something like pkgs.writeText was assigned to the file.
           ''
             zone "${name}" {
               type ${if master then "master" else "slave"};
-              file "${file}";
+              file "${if (builtins.isAttrs file) && !(isDerivation file) then zoneFile { inherit name; opts = file; } else file}";
               ${ if master then
             ''
               allow-transfer {
@@ -59,6 +79,146 @@ let
       )
       cfg.zones }
     '';
+
+  zoneOpts = {
+    options = {
+      name = mkOption {
+        type = types.str;
+        description = ''
+          Name of zone.
+        '';
+      };
+      master = mkOption {
+        type = types.bool;
+        default = true;
+        description = ''
+          Flag to indicate that this zone is a master.
+        '';
+      };
+      file = mkOption {
+        type = with types; nullOr (oneOf [ str path (submodule fileOpts) ]);
+        default = null;
+        description = ''
+          Path to zone file.
+        '';
+      };
+      masters = mkOption {
+        type = types.listOf types.str;
+        default = [];
+        description = ''
+          Master DNS of zone.
+        '';
+      };
+      slaves = mkOption {
+        type = types.listOf types.str;
+        default = [];
+        description = ''
+          Slaves of zone.
+        '';
+      };
+      extraConfig = mkOption {
+        type = types.str;
+        default = "";
+        description = ''
+          Extra configuration added to configuration file.
+        '';
+      };
+
+    };
+  };
+
+  fileOpts = {
+    options = {
+      owner = mkOption {
+        default = "admin.your-domain.org";
+        description = ''
+          Email address of the servers technical contact (the @ is replaced by a dot).
+        '';
+      };
+      name_primary = mkOption {
+        default = "ns";
+        example = "ns1";
+        description = ''
+          This will be used to generate the name of the primary DNS server.
+          The primary DNS server's name will be: <command>{fileSettings.name_primary}.{name}"</command>
+        '';
+      };
+      serial = mkOption {
+        default = 1;
+        type = types.ints.unsigned;
+        description = ''
+          Unsigned 32bit int, version-number of the zone, should be incremented with each change.
+        '';
+      };
+      refresh = mkOption {
+        default = "8H";
+        description = ''
+          Time interval between checks of the primary nameserver's serial number.
+        '';
+      };
+      retry = mkOption {
+        default = "2H";
+        description = ''
+          Time interval to wait prior to retrying a failed attempt to updated a zone.
+        '';
+      };
+      expire = mkOption {
+        default = "4W";
+        description = ''
+          Time interval to wait before considering the primary server unavailable.
+        '';
+      };
+      minimum_ttl = mkOption {
+        default = "1D";
+        description = ''
+          Time interval of caching a negative response.
+        '';
+      };
+      default_ttl = mkOption {
+        default = "3D";
+        description = ''
+          Default TTL.
+        '';
+      };
+
+      records = mkOption {
+        type = with types;
+          listOf (
+            submodule {
+              options = {
+                name = mkOption {
+                  type = str;
+                  example = "test";
+                  description = "Start of test.mydomain.local .";
+                };
+                type = mkOption {
+                  type = enum [ "A" "AAAA" "NS" "MX" "CNAME" "RP" "TXT" "SOA" "HINFO" "SRV" "DANE" "TLSA" "DS" "CAA" ];
+                  default = "A";
+                  example = "CNAME";
+                  description = "Type of records.";
+                };
+                value = mkOption {
+                  default = "127.0.0.1";
+                  type = str;
+                  example = "192.168.1.1";
+                  description = "Value of dns entry.";
+                };
+                ttl = mkOption {
+                  default = "3H";
+                  type = str;
+                  example = "3H";
+                  description = "TTL";
+                };
+              };
+            }
+          );
+        default = [];
+        example = [ { name = "ns"; value = "192.168.1.1"; type = "A"; } ];
+        description = "List of dns-records, you should always set the primary DNS server.";
+      };
+
+    };
+  };
 
 in
 
@@ -122,6 +282,7 @@ in
 
       zones = mkOption {
         default = [];
+        type = types.listOf (types.submodule zoneOpts);
         description = "
           List of zones we claim authority over.
             master=false means slave server; slaves means addresses
@@ -174,6 +335,13 @@ in
   ###### implementation
 
   config = mkIf cfg.enable {
+
+    assertions = [
+      {
+        assertion = (foldr (x: y: y && x.file != null) true cfg.zones);
+        message = "Each zone specified in bind.zones requires a zone-file.";
+      }
+    ];
 
     networking.resolvconf.useLocalResolver = mkDefault true;
 
