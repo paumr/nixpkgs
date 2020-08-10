@@ -125,7 +125,8 @@ in
             master=false means slave server; slaves means addresses
            who may request zone transfer.
         ";
-        example = [
+        example = literalExample ''
+        [
           {
             name = "example.com";
             master = false;
@@ -134,7 +135,8 @@ in
             slaves = [ ];
             extraConfig = "";
           }
-        ];
+        ]
+        '';
       };
 
       extraConfig = mkOption {
