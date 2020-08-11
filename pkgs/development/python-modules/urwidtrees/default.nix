@@ -3,20 +3,21 @@
 , fetchFromGitHub
 , glibcLocales
 , urwid
+, mock
 }:
 
 buildPythonPackage rec {
   pname = "urwidtrees";
-  version  = "1.0.2";
+  version = "1.0.3";
 
   src = fetchFromGitHub {
     owner = "pazz";
     repo = "urwidtrees";
     rev = version;
-    sha256 = "1n1kpidvkdnsqyb82vlvk78gmly96kh8351lqxn2pzgwwns6fml2";
+    sha256 = "1y1vysx7jg0vbrarlsykhf7nmr8fc6k1fva1q3i98xq2m30s6r68";
   };
 
-  propagatedBuildInputs = [ urwid ];
+  propagatedBuildInputs = [ urwid mock ];
 
   checkInputs = [ glibcLocales ];
   LC_ALL="en_US.UTF-8";
