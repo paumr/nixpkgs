@@ -20,7 +20,7 @@ buildPythonPackage rec {
   propagatedBuildInputs = [ urwid mock ];
 
   checkInputs = [ glibcLocales ];
-  LC_ALL="en_US.UTF-8";
+  LC_ALL = "en_US.UTF-8";
 
   meta = with stdenv.lib; {
     description = "Tree widgets for urwid";
