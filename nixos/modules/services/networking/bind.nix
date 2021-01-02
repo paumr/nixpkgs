@@ -32,8 +32,7 @@ let
         ${cfg.extraConfig}
 
         ${ concatMapStrings
-          (
-          { name, file, master ? true, slaves ? [ ], masters ? [ ], extraConfig ? "" }:
+          ({ name, file, master ? true, slaves ? [ ], masters ? [ ], extraConfig ? "" }:
               ''
                 zone "${name}" {
                   type ${if master then "master" else "slave"};
@@ -126,16 +125,16 @@ in
            who may request zone transfer.
         ";
         example = literalExample ''
-        [
-          {
-            name = "example.com";
-            master = false;
-            file = "/var/dns/example.com";
-            masters = [ "192.168.0.1" ];
-            slaves = [ ];
-            extraConfig = "";
-          }
-        ]
+          [
+            {
+              name = "example.com";
+              master = false;
+              file = "/var/dns/example.com";
+              masters = [ "192.168.0.1" ];
+              slaves = [ ];
+              extraConfig = "";
+            }
+          ]
         '';
       };
 
