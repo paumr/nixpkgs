@@ -7,22 +7,28 @@
 , libsecret
 , webkitgtk
 , wrapGAppsHook
+, undmg
 }:
 
 stdenv.mkDerivation rec {
   pname = "Archi";
-  version = "4.7.1";
+  version = "5.1.0";
 
   src =
     if stdenv.hostPlatform.system == "x86_64-linux" then
       fetchurl {
-        url = "https://www.archimatetool.com/downloads/archi/Archi-Linux64-${version}.tgz";
-        sha256 = "0sd57cfnh5q2p17sd86c8wgmqyipg29rz6iaa5brq8mwn8ps2fdw";
+        url = "https://www.archimatetool.com/downloads/archi-5.php?/${version}/Archi-Linux64-${version}.tgz";
+        sha256 = "1bv7xsjvxzr366zij1hy8mlsn6is3ykh1p50dkjxqg02f8k8cspm";
       }
     else if stdenv.hostPlatform.system == "x86_64-darwin" then
       fetchzip {
-        url = "https://www.archimatetool.com/downloads/archi/Archi-Mac-${version}.zip";
-        sha256 = "1h05lal5jnjwm30dbqvd6gisgrmf1an8xf34f01gs9pwqvqfvmxc";
+        url = "https://www.archimatetool.com/downloads/archi-5.php?/${version}/Archi-Mac-${version}.dmg";
+        sha256 = "11z8xq3m0m8kpdwwldsjnhsf0wk7ybwsa5l9wfj215aj0dqk0w0y";
+      }
+    else if stdenv.hostPlatform.system == "aarch64-darwin" then
+      fetchzip {
+        url = "https://www.archimatetool.com/downloads/archi-5.php?/${version}/Archi-Mac-Silicon-${version}.dmg";
+        sha256 = "0ajsmnag1wn84kxczm3xnlyfycyy1hq6gswgvjl6xzlryjrigvf2";
       }
     else
       throw "Unsupported system";
@@ -34,7 +40,8 @@ stdenv.mkDerivation rec {
   nativeBuildInputs = [
     makeWrapper
     wrapGAppsHook
-  ] ++ lib.optional stdenv.hostPlatform.isLinux autoPatchelfHook;
+  ] ++ lib.optional stdenv.hostPlatform.isLinux autoPatchelfHook
+    ++ lib.optional stdenv.hostPlatform.isDarwin undmg;
 
   installPhase =
     if stdenv.hostPlatform.system == "x86_64-linux" then
