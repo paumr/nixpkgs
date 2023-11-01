@@ -7,7 +7,7 @@
 , libsecret
 , webkitgtk
 , wrapGAppsHook
-, undmg
+, _7zz
 }:
 
 stdenv.mkDerivation rec {
@@ -40,8 +40,11 @@ stdenv.mkDerivation rec {
   nativeBuildInputs = [
     makeWrapper
     wrapGAppsHook
-  ] ++ lib.optional stdenv.hostPlatform.isLinux autoPatchelfHook
-    ++ lib.optional stdenv.hostPlatform.isDarwin undmg;
+  ] ++ lib.optional stdenv.hostPlatform.isLinux autoPatchelfHook;
+
+  unpackPhase = if stdenv.isDarwin then ''
+    ${_7zz}/bin/7zz x $src
+  '' else null;
 
   installPhase =
     if stdenv.hostPlatform.system == "x86_64-linux" then
