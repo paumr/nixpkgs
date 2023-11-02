@@ -42,7 +42,7 @@ stdenv.mkDerivation rec {
     wrapGAppsHook
   ] ++ lib.optional stdenv.hostPlatform.isLinux autoPatchelfHook;
 
-  unpackPhase = if stdenv.isDarwin then ''
+  unpackPhase = if stdenv.hostPlatform.isDarwin then ''
     ${_7zz}/bin/7zz x $src
   '' else null;
 
