@@ -5,6 +5,7 @@
   fetchFromGitHub,
   pkg-config,
   openssl,
+  writableTmpDirAsHomeHook,
 }:
 
 rustPlatform.buildRustPackage (finalAttrs: {
@@ -26,7 +27,8 @@ rustPlatform.buildRustPackage (finalAttrs: {
   env.OPENSSL_NO_VENDOR = true;
 
   # https://github.com/icann/icann-rdap/issues/138
-  doCheck = !stdenv.hostPlatform.isDarwin;
+  nativeCheckInputs = lib.optionals stdenv.hostPlatform.isDarwin [ writableTmpDirAsHomeHook ];
+  __darwinAllowLocalNetworking = true;
 
   meta = {
     description = "Official ICANN RDAP tools, containing cli client and server";
